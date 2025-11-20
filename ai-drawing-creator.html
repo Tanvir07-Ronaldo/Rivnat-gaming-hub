@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Drawing Creator - Rivnat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.18.0/matter.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #00f5d4;
+            --secondary-color: #00bbf9;
+            --accent-color: #9b5de5;
+            --dark-bg: #0a0a0a;
+            --darker-bg: #000000;
+            --light-bg: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --gradient-1: linear-gradient(135deg, #00f5d4 0%, #00bbf9 100%);
+            --gradient-2: linear-gradient(135deg, #9b5de5 0%, #f15bb5 100%);
+            --gradient-3: linear-gradient(135deg, #fee440 0%, #00f5d4 100%);
+            --neon-glow: 0 0 20px rgba(0, 245, 212, 0.5);
+            --tech-shadow: 0 8px 32px rgba(0, 245, 212, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Navigation */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 245, 212, 0.2);
+            z-index: 1000;
+            padding: 1rem 0;
+        }
+
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--gradient-1);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 8rem 0 4rem;
+            min-height: 100vh;
+        }
+
+        .ai-creator-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .ai-creator-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: var(--neon-glow);
+        }
+
+        .ai-creator-subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.8;
+        }
+
+        /* Drawing Interface */
+        .drawing-workspace {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+            align-items: start;
+        }
+
+        .tools-panel {
+            background: rgba(26, 26, 26, 0.8);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(0, 245, 212, 0.2);
+            backdrop-filter: blur(20px);
+            height: fit-content;
+        }
+
+        .panel-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+            text-align: center;
+        }
+
+        .drawing-tools {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .tool-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .tool-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .tool-btn {
+            width: 100%;
+            padding: 0.8rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 245, 212, 0.3);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tool-btn:hover,
+        .tool-btn.active {
+            background: var(--primary-color);
+            color: var(--dark-bg);
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .color-picker {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .color-option:hover,
+        .color-option.active {
+            border-color: var(--primary-color);
+            transform: scale(1.1);
+        }
+
+        .canvas-container {
+            background: rgba(26, 26, 26, 0.8);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(0, 245, 212, 0.2);
+            backdrop-filter: blur(20px);
+            text-align: center;
+        }
+
+        .drawing-canvas {
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            background: white;
+            border-radius: 15px;
+            margin: 0 auto 2rem;
+            cursor: crosshair;
+            box-shadow: var(--tech-shadow);
+            border: 2px solid rgba(0, 245, 212, 0.2);
+        }
+
+        .canvas-controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 0.8rem 1.5rem;
+            background: var(--gradient-1);
+            border: none;
+            border-radius: 25px;
+            color: var(--dark-bg);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--neon-glow);
+        }
+
+        .control-btn.secondary {
+            background: rgba(155, 93, 229, 0.2);
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+        }
+
+        .control-btn.secondary:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .ai-analysis {
+            background: rgba(26, 26, 26, 0.8);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(0, 245, 212, 0.2);
+            backdrop-filter: blur(20px);
+            height: fit-content;
+        }
+
+        .analysis-content {
+            text-align: center;
+        }
+
+        .ai-status {
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .ai-thinking {
+            display: none;
+            text-align: center;
+        }
+
+        .thinking-animation {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(0, 245, 212, 0.3);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .analysis-result {
+            display: none;
+        }
+
+        .detected-objects {
+            margin-bottom: 1.5rem;
+        }
+
+        .object-tag {
+            display: inline-block;
+            background: rgba(0, 245, 212, 0.2);
+            color: var(--primary-color);
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin: 0.2rem;
+            border: 1px solid rgba(0, 245, 212, 0.3);
+        }
+
+        .game-preview {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .preview-title {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .preview-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .create-game-btn {
+            width: 100%;
+            padding: 1rem;
+            background: var(--gradient-2);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .create-game-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(155, 93, 229, 0.3);
+        }
+
+        /* Generated Game Modal */
+        .game-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            backdrop-filter: blur(10px);
+        }
+
+        .game-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--dark-bg);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(0, 245, 212, 0.2);
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .modal-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close-modal:hover {
+            color: var(--primary-color);
+        }
+
+        .generated-game {
+            width: 800px;
+            height: 600px;
+            background: white;
+            border-radius: 10px;
+            margin: 0 auto;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .drawing-workspace {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .tools-panel,
+            .ai-analysis {
+                order: 2;
+            }
+            
+            .canvas-container {
+                order: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            
+            .ai-creator-title {
+                font-size: 2rem;
+            }
+            
+            .drawing-canvas {
+                height: 300px;
+            }
+            
+            .canvas-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .generated-game {
+                width: 100%;
+                height: 400px;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <div class="logo">Rivnat</div>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="index.html#ai-draw">AI Creator</a></li>
+                    <li><a href="index.html#games">Games</a></li>
+                    <li><a href="index.html">Back to Main</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container">
+            <div class="ai-creator-header">
+                <h1 class="ai-creator-title">🎨 AI Drawing Creator</h1>
+                <p class="ai-creator-subtitle">
+                    Draw anything and watch as our revolutionary AI transforms your artwork into a unique, 
+                    playable game. This is the future of game creation - where imagination meets artificial intelligence.
+                </p>
+            </div>
+
+            <div class="drawing-workspace">
+                <!-- Tools Panel -->
+                <div class="tools-panel">
+                    <h3 class="panel-title">🛠️ Drawing Tools</h3>
+                    
+                    <div class="drawing-tools">
+                        <div class="tool-group">
+                            <div class="tool-label">Drawing Mode</div>
+                            <button class="tool-btn active" data-tool="pen">
+                                <i class="fas fa-pen"></i> Pen
+                            </button>
+                            <button class="tool-btn" data-tool="eraser">
+                                <i class="fas fa-eraser"></i> Eraser
+                            </button>
+                        </div>
+
+                        <div class="tool-group">
+                            <div class="tool-label">Brush Size</div>
+                            <button class="tool-btn active" data-size="5">Small (5px)</button>
+                            <button class="tool-btn" data-size="10">Medium (10px)</button>
+                            <button class="tool-btn" data-size="20">Large (20px)</button>
+                        </div>
+
+                        <div class="tool-group">
+                            <div class="tool-label">Colors</div>
+                            <div class="color-picker">
+                                <div class="color-option active" data-color="#000000" style="background: #000000;"></div>
+                                <div class="color-option" data-color="#ff0000" style="background: #ff0000;"></div>
+                                <div class="color-option" data-color="#00ff00" style="background: #00ff00;"></div>
+                                <div class="color-option" data-color="#0000ff" style="background: #0000ff;"></div>
+                                <div class="color-option" data-color="#ffff00" style="background: #ffff00;"></div>
+                                <div class="color-option" data-color="#ff00ff" style="background: #ff00ff;"></div>
+                                <div class="color-option" data-color="#00ffff" style="background: #00ffff;"></div>
+                                <div class="color-option" data-color="#ffffff" style="background: #ffffff;"></div>
+                            </div>
+                        </div>
+
+                        <div class="tool-group">
+                            <div class="tool-label">Actions</div>
+                            <button class="tool-btn" id="clearCanvas">
+                                <i class="fas fa-trash"></i> Clear All
+                            </button>
+                            <button class="tool-btn" id="undoDraw">
+                                <i class="fas fa-undo"></i> Undo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas Container -->
+                <div class="canvas-container">
+                    <h3 style="color: var(--primary-color); margin-bottom: 1rem; font-family: 'JetBrains Mono', monospace;">
+                        ✏️ Your Drawing Canvas
+                    </h3>
+                    
+                    <canvas class="drawing-canvas" id="drawingCanvas" width="600" height="400"></canvas>
+                    
+                    <div class="canvas-controls">
+                        <button class="control-btn" id="analyzeDrawing">
+                            <i class="fas fa-brain"></i>
+                            Analyze Drawing
+                        </button>
+                        <button class="control-btn secondary" id="saveDrawing">
+                            <i class="fas fa-save"></i>
+                            Save Drawing
+                        </button>
+                        <button class="control-btn secondary" id="loadExample">
+                            <i class="fas fa-lightbulb"></i>
+                            Load Example
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 2rem; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 10px;">
+                        <h4 style="color: var(--primary-color); margin-bottom: 0.5rem;">💡 Drawing Tips:</h4>
+                        <ul style="color: var(--text-secondary); font-size: 0.9rem; text-align: left; line-height: 1.6;">
+                            <li>Draw simple shapes like circles, squares, or triangles</li>
+                            <li>Add details like eyes, mouth, or limbs to characters</li>
+                            <li>Use different colors to make your drawing more recognizable</li>
+                            <li>Try drawing animals, vehicles, or fantasy creatures</li>
+                            <li>The AI recognizes basic shapes and patterns</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- AI Analysis Panel -->
+                <div class="ai-analysis">
+                    <h3 class="panel-title">🤖 AI Analysis</h3>
+                    
+                    <div class="analysis-content">
+                        <div class="ai-status" id="aiStatus">
+                            Ready to analyze your drawing!
+                        </div>
+
+                        <div class="ai-thinking" id="aiThinking">
+                            <div class="thinking-animation"></div>
+                            <p>AI is analyzing your artwork...</p>
+                        </div>
+
+                        <div class="analysis-result" id="analysisResult">
+                            <div class="detected-objects">
+                                <h4 style="color: var(--primary-color); margin-bottom: 1rem;">Detected Elements:</h4>
+                                <div id="objectTags"></div>
+                            </div>
+
+                            <div class="game-preview">
+                                <div class="preview-title">🎮 Generated Game Preview</div>
+                                <div class="preview-description" id="gameDescription">
+                                    AI will generate a unique game based on your drawing...
+                                </div>
+                                <button class="create-game-btn" id="createGame">
+                                    <i class="fas fa-magic"></i>
+                                    Create My Game!
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generated Game Modal -->
+    <div class="game-modal" id="gameModal">
+        <div class="game-modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">🎮 Your AI Generated Game</h2>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <div class="generated-game" id="generatedGame">
+                <!-- Game will be rendered here -->
+            </div>
+            <div style="margin-top: 1rem; text-align: center;">
+                <button class="control-btn" id="shareGame">
+                    <i class="fas fa-share"></i>
+                    Share Game
+                </button>
+                <button class="control-btn secondary" id="playAgain">
+                    <i class="fas fa-redo"></i>
+                    Create Another
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Drawing Canvas Setup
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let currentTool = 'pen';
+        let currentColor = '#000000';
+        let currentSize = 5;
+        let drawingHistory = [];
+
+        // Canvas state
+        let canvasState = {
+            tool: 'pen',
+            color: '#000000',
+            size: 5,
+            paths: []
+        };
+
+        // Initialize canvas
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Drawing functions
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            
+            if (currentTool === 'pen') {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = currentColor;
+                ctx.lineWidth = currentSize;
+            } else {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineWidth = currentSize * 2;
+            }
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            saveCanvasState();
+        }
+
+        function saveCanvasState() {
+            drawingHistory.push(canvas.toDataURL());
+            if (drawingHistory.length > 10) {
+                drawingHistory.shift(); // Keep only last 10 states
+            }
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawingHistory = [];
+            updateAIStatus('Canvas cleared. Start drawing!');
+        }
+
+        function undoDraw() {
+            if (drawingHistory.length > 0) {
+                drawingHistory.pop(); // Remove current state
+                if (drawingHistory.length > 0) {
+                    const img = new Image();
+                    img.src = drawingHistory[drawingHistory.length - 1];
+                    img.onload = function() {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0);
+                    };
+                } else {
+                    clearCanvas();
+                }
+            }
+        }
+
+        // AI Analysis System
+        function analyzeDrawing() {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Simple shape detection based on pixel patterns
+            const analysis = {
+                shapes: [],
+                colors: [],
+                complexity: 0
+            };
+
+            // Detect non-white pixels (drawing content)
+            let drawingPixels = 0;
+            const colorMap = {};
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const a = data[i + 3];
+                
+                if (a > 0 && !(r === 255 && g === 255 && b === 255)) {
+                    drawingPixels++;
+                    const colorKey = `${r},${g},${b}`;
+                    colorMap[colorKey] = (colorMap[colorKey] || 0) + 1;
+                }
+            }
+
+            analysis.complexity = drawingPixels;
+            
+            // Determine dominant colors
+            const sortedColors = Object.entries(colorMap)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 3);
+            
+            analysis.colors = sortedColors.map(([color]) => {
+                const [r, g, b] = color.split(',').map(Number);
+                return rgbToHex(r, g, b);
+            });
+
+            // Simple shape detection based on complexity
+            if (drawingPixels > 1000) {
+                analysis.shapes.push('complex-drawing');
+            } else if (drawingPixels > 500) {
+                analysis.shapes.push('medium-drawing');
+            } else {
+                analysis.shapes.push('simple-drawing');
+            }
+
+            // Detect potential objects based on color distribution
+            if (colorMap['255,0,0'] > 100) analysis.shapes.push('red-object');
+            if (colorMap['0,255,0'] > 100) analysis.shapes.push('green-object');
+            if (colorMap['0,0,255'] > 100) analysis.shapes.push('blue-object');
+            if (colorMap['255,255,0'] > 100) analysis.shapes.push('yellow-object');
+
+            return analysis;
+        }
+
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(x => {
+                const hex = x.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('');
+        }
+
+        function generateGameFromAnalysis(analysis) {
+            const gameTypes = [
+                {
+                    name: "Shape Collector",
+                    description: "Collect falling shapes that match your drawing colors while avoiding obstacles!",
+                    type: "collector"
+                },
+                {
+                    name: "Color Matcher",
+                    description: "Match colors from your drawing in this fast-paced puzzle game!",
+                    type: "puzzle"
+                },
+                {
+                    name: "Drawing Defender",
+                    description: "Protect your artwork from erasers and other drawing enemies!",
+                    type: "defense"
+                },
+                {
+                    name: "Art Platformer",
+                    description: "Jump through a world inspired by your drawing colors and shapes!",
+                    type: "platformer"
+                }
+            ];
+
+            const selectedGame = gameTypes[Math.floor(Math.random() * gameTypes.length)];
+            
+            // Customize based on analysis
+            if (analysis.colors.includes('#ff0000')) {
+                selectedGame.description += " Features fire and energy elements!";
+            }
+            if (analysis.colors.includes('#0000ff')) {
+                selectedGame.description += " Includes water and ice mechanics!";
+            }
+            if (analysis.complexity > 2000) {
+                selectedGame.description += " Complex multi-level gameplay!";
+            }
+
+            return selectedGame;
+        }
+
+        function updateAIStatus(message) {
+            document.getElementById('aiStatus').textContent = message;
+        }
+
+        function showAIThinking() {
+            document.getElementById('aiThinking').style.display = 'block';
+            document.getElementById('analysisResult').style.display = 'none';
+            updateAIStatus('Analyzing your artwork...');
+        }
+
+        function hideAIThinking() {
+            document.getElementById('aiThinking').style.display = 'none';
+            document.getElementById('analysisResult').style.display = 'block';
+        }
+
+        function displayAnalysis(analysis, game) {
+            // Show object tags
+            const objectTags = document.getElementById('objectTags');
+            objectTags.innerHTML = '';
+            
+            analysis.shapes.forEach(shape => {
+                const tag = document.createElement('span');
+                tag.className = 'object-tag';
+                tag.textContent = shape.replace('-', ' ');
+                objectTags.appendChild(tag);
+            });
+
+            analysis.colors.forEach(color => {
+                const tag = document.createElement('span');
+                tag.className = 'object-tag';
+                tag.textContent = color;
+                tag.style.background = color;
+                tag.style.color = getContrastColor(color);
+                objectTags.appendChild(tag);
+            });
+
+            // Update game description
+            document.getElementById('gameDescription').textContent = game.description;
+            
+            // Store game data for creation
+            window.currentGameData = game;
+            
+            hideAIThinking();
+            updateAIStatus('Analysis complete! Ready to create your game.');
+        }
+
+        function getContrastColor(hexColor) {
+            // Convert hex to RGB
+            const r = parseInt(hexColor.substr(1, 2), 16);
+            const g = parseInt(hexColor.substr(3, 2), 16);
+            const b = parseInt(hexColor.substr(5, 2), 16);
+            
+            // Calculate luminance
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            
+            return luminance > 0.5 ? '#000000' : '#ffffff';
+        }
+
+        // Event Listeners
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const mouseEvent = new MouseEvent('mouseup', {});
+            canvas.dispatchEvent(mouseEvent);
+        });
+
+        // Tool selection
+        document.querySelectorAll('[data-tool]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('[data-tool]').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentTool = this.dataset.tool;
+            });
+        });
+
+        // Size selection
+        document.querySelectorAll('[data-size]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('[data-size]').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentSize = parseInt(this.dataset.size);
+            });
+        });
+
+        // Color selection
+        document.querySelectorAll('.color-option').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.color-option').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentColor = this.dataset.color;
+            });
+        });
+
+        // Control buttons
+        document.getElementById('clearCanvas').addEventListener('click', clearCanvas);
+        document.getElementById('undoDraw').addEventListener('click', undoDraw);
+        
+        document.getElementById('analyzeDrawing').addEventListener('click', function() {
+            showAIThinking();
+            
+            setTimeout(() => {
+                const analysis = analyzeDrawing();
+                const game = generateGameFromAnalysis(analysis);
+                displayAnalysis(analysis, game);
+            }, 2000); // Simulate AI processing time
+        });
+
+        document.getElementById('saveDrawing').addEventListener('click', function() {
+            const link = document.createElement('a');
+            link.download = 'my-drawing.png';
+            link.href = canvas.toDataURL();
+            link.click();
+            
+            updateAIStatus('Drawing saved successfully!');
+        });
+
+        document.getElementById('loadExample').addEventListener('click', function() {
+            // Load a simple example drawing
+            clearCanvas();
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(150, 150, 50, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(130, 140, 8, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(170, 140, 8, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(150, 160, 20, 0, Math.PI);
+            ctx.stroke();
+            
+            saveCanvasState();
+            updateAIStatus('Example drawing loaded! Try analyzing it.');
+        });
+
+        document.getElementById('createGame').addEventListener('click', function() {
+            if (window.currentGameData) {
+                createGeneratedGame(window.currentGameData);
+            }
+        });
+
+        // Modal controls
+        document.getElementById('closeModal').addEventListener('click', function() {
+            document.getElementById('gameModal').style.display = 'none';
+        });
+
+        document.getElementById('shareGame').addEventListener('click', function() {
+            alert('Game sharing feature coming soon! Your game will be saved and shareable.');
+        });
+
+        document.getElementById('playAgain').addEventListener('click', function() {
+            document.getElementById('gameModal').style.display = 'none';
+            clearCanvas();
+            updateAIStatus('Ready for your next masterpiece!');
+        });
+
+        // Generated Game Creation
+        function createGeneratedGame(gameData) {
+            const modal = document.getElementById('gameModal');
+            const gameContainer = document.getElementById('generatedGame');
+            
+            // Clear previous game
+            gameContainer.innerHTML = '';
+            
+            // Create game based on type
+            switch(gameData.type) {
+                case 'collector':
+                    createCollectorGame(gameContainer);
+                    break;
+                case 'puzzle':
+                    createPuzzleGame(gameContainer);
+                    break;
+                case 'defense':
+                    createDefenseGame(gameContainer);
+                    break;
+                case 'platformer':
+                    createPlatformerGame(gameContainer);
+                    break;
+                default:
+                    createCollectorGame(gameContainer);
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        function createCollectorGame(container) {
+            container.innerHTML = `
+                <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: 10px; left: 10px; color: white; font-weight: bold; z-index: 10;">
+                        Score: <span id="collectorScore">0</span>
+                    </div>
+                    <div id="collectorPlayer" style="width: 30px; height: 30px; background: #ff6b6b; border-radius: 50%; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); cursor: pointer;"></div>
+                </div>
+            `;
+            
+            let score = 0;
+            let playerX = 385;
+            const player = container.querySelector('#collectorPlayer');
+            const scoreDisplay = container.querySelector('#collectorScore');
+            
+            // Mouse movement
+            container.addEventListener('mousemove', (e) => {
+                const rect = container.getBoundingClientRect();
+                playerX = e.clientX - rect.left - 15;
+                playerX = Math.max(15, Math.min(785, playerX));
+                player.style.left = playerX + 'px';
+            });
+            
+            // Spawn falling objects
+            setInterval(() => {
+                const object = document.createElement('div');
+                object.style.cssText = `
+                    width: 20px; height: 20px; background: ${['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7'][Math.floor(Math.random() * 5)]};
+                    border-radius: 50%; position: absolute; top: -20px; left: ${Math.random() * 780}px;
+                    animation: fall 3s linear;
+                `;
+                
+                container.firstElementChild.appendChild(object);
+                
+                // Animate falling
+                let fallInterval = setInterval(() => {
+                    const top = parseFloat(object.style.top) || -20;
+                    object.style.top = (top + 5) + 'px';
+                    
+                    // Check collision with player
+                    const objectRect = object.getBoundingClientRect();
+                    const playerRect = player.getBoundingClientRect();
+                    
+                    if (objectRect.bottom >= playerRect.top && 
+                        objectRect.top <= playerRect.bottom &&
+                        objectRect.right >= playerRect.left &&
+                        objectRect.left <= playerRect.right) {
+                        
+                        score += 10;
+                        scoreDisplay.textContent = score;
+                        object.remove();
+                        clearInterval(fallInterval);
+                    }
+                    
+                    // Remove if off screen
+                    if (top > 600) {
+                        object.remove();
+                        clearInterval(fallInterval);
+                    }
+                }, 50);
+                
+                // Auto remove after animation
+                setTimeout(() => {
+                    if (object.parentNode) {
+                        object.remove();
+                        clearInterval(fallInterval);
+                    }
+                }, 3000);
+            }, 1000);
+        }
+
+        function createPuzzleGame(container) {
+            container.innerHTML = `
+                <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white;">
+                    <h2>Color Matching Puzzle</h2>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px;">
+                        <div class="puzzle-piece" data-color="red" style="width: 60px; height: 60px; background: #ff6b6b; border-radius: 10px; cursor: pointer; transition: transform 0.3s;"></div>
+                        <div class="puzzle-piece" data-color="blue" style="width: 60px; height: 60px; background: #4ecdc4; border-radius: 10px; cursor: pointer; transition: transform 0.3s;"></div>
+                        <div class="puzzle-piece" data-color="green" style="width: 60px; height: 60px; background: #45b7d1; border-radius: 10px; cursor: pointer; transition: transform 0.3s;"></div>
+                        <div class="puzzle-piece" data-color="yellow" style="width: 60px; height: 60px; background: #96ceb4; border-radius: 10px; cursor: pointer; transition: transform 0.3s;"></div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <p>Match the colors in sequence!</p>
+                        <p>Score: <span id="puzzleScore">0</span></p>
+                    </div>
+                </div>
+            `;
+            
+            let score = 0;
+            let sequence = ['red', 'blue', 'green', 'yellow'];
+            let currentStep = 0;
+            const pieces = container.querySelectorAll('.puzzle-piece');
+            const scoreDisplay = container.querySelector('#puzzleScore');
+            
+            pieces.forEach(piece => {
+                piece.addEventListener('click', () => {
+                    const color = piece.dataset.color;
+                    if (color === sequence[currentStep]) {
+                        piece.style.transform = 'scale(0.8)';
+                        piece.style.opacity = '0.5';
+                        currentStep++;
+                        score += 25;
+                        scoreDisplay.textContent = score;
+                        
+                        if (currentStep >= sequence.length) {
+                            setTimeout(() => {
+                                alert('Puzzle completed! Score: ' + score);
+                                pieces.forEach(p => {
+                                    p.style.transform = 'scale(1)';
+                                    p.style.opacity = '1';
+                                });
+                                currentStep = 0;
+                            }, 500);
+                        }
+                    } else {
+                        piece.style.transform = 'scale(1.2)';
+                        setTimeout(() => {
+                            piece.style.transform = 'scale(1)';
+                        }, 200);
+                    }
+                });
+            });
+        }
+
+        function createDefenseGame(container) {
+            container.innerHTML = `
+                <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: 10px; left: 10px; color: white; font-weight: bold; z-index: 10;">
+                        Health: <span id="defenderHealth">100</span> | Score: <span id="defenderScore">0</span>
+                    </div>
+                    <div id="defenderArtwork" style="width: 100px; height: 100px; background: white; border-radius: 10px; position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; font-size: 2rem;">🎨</div>
+                </div>
+            `;
+            
+            let health = 100;
+            let score = 0;
+            let healthDisplay = container.querySelector('#defenderHealth');
+            let scoreDisplay = container.querySelector('#defenderScore');
+            
+            // Spawn enemies
+            setInterval(() => {
+                const enemy = document.createElement('div');
+                enemy.style.cssText = `
+                    width: 30px; height: 30px; background: #ff4757; border-radius: 50%; 
+                    position: absolute; top: -30px; left: ${Math.random() * 770}px;
+                    cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;
+                `;
+                enemy.textContent = '✖';
+                
+                container.firstElementChild.appendChild(enemy);
+                
+                let enemyInterval = setInterval(() => {
+                    const top = parseFloat(enemy.style.top) || -30;
+                    enemy.style.top = (top + 3) + 'px';
+                    
+                    // Check if enemy reached artwork
+                    if (top > 500) {
+                        health -= 10;
+                        healthDisplay.textContent = health;
+                        enemy.remove();
+                        clearInterval(enemyInterval);
+                        
+                        if (health <= 0) {
+                            alert('Game Over! Your artwork was destroyed! Score: ' + score);
+                            health = 100;
+                            score = 0;
+                            healthDisplay.textContent = health;
+                            scoreDisplay.textContent = score;
+                        }
+                    }
+                }, 50);
+                
+                // Click to destroy enemy
+                enemy.addEventListener('click', () => {
+                    score += 10;
+                    scoreDisplay.textContent = score;
+                    enemy.remove();
+                    clearInterval(enemyInterval);
+                });
+                
+                // Auto remove after some time
+                setTimeout(() => {
+                    if (enemy.parentNode) {
+                        enemy.remove();
+                        clearInterval(enemyInterval);
+                    }
+                }, 10000);
+            }, 1500);
+        }
+
+        function createPlatformerGame(container) {
+            container.innerHTML = `
+                <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: 10px; left: 10px; color: white; font-weight: bold; z-index: 10;">
+                        Score: <span id="platformerScore">0</span>
+                    </div>
+                    <div id="platformerPlayer" style="width: 30px; height: 30px; background: #ff6b6b; border-radius: 5px; position: absolute; bottom: 100px; left: 50px;"></div>
+                    <div class="platform" style="width: 200px; height: 20px; background: #2d3436; position: absolute; bottom: 80px; left: 0;"></div>
+                    <div class="platform" style="width: 150px; height: 20px; background: #2d3436; position: absolute; bottom: 150px; left: 250px;"></div>
+                    <div class="platform" style="width: 180px; height: 20px; background: #2d3436; position: absolute; bottom: 220px; left: 450px;"></div>
+                    <div class="coin" style="width: 20px; height: 20px; background: #fdcb6e; border-radius: 50%; position: absolute; bottom: 170px; left: 300px;"></div>
+                    <div class="coin" style="width: 20px; height: 20px; background: #fdcb6e; border-radius: 50%; position: absolute; bottom: 240px; left: 500px;"></div>
+                </div>
+            `;
+            
+            let score = 0;
+            let playerY = 470;
+            let velocityY = 0;
+            let isJumping = false;
+            const player = container.querySelector('#platformerPlayer');
+            const scoreDisplay = container.querySelector('#platformScore');
+            const coins = container.querySelectorAll('.coin');
+            
+            // Jump mechanics
+            container.addEventListener('click', () => {
+                if (!isJumping) {
+                    velocityY = -15;
+                    isJumping = true;
+                }
+            });
+            
+            // Game loop
+            let gameLoop = setInterval(() => {
+                // Apply gravity
+                if (isJumping || playerY < 470) {
+                    velocityY += 0.8;
+                    playerY += velocityY;
+                    
+                    // Ground collision
+                    if (playerY >= 470) {
+                        playerY = 470;
+                        velocityY = 0;
+                        isJumping = false;
+                    }
+                    
+                    player.style.bottom = (600 - playerY - 30) + 'px';
+                }
+                
+                // Coin collection
+                coins.forEach(coin => {
+                    const coinRect = coin.getBoundingClientRect();
+                    const playerRect = player.getBoundingClientRect();
+                    
+                    if (coin.style.display !== 'none' &&
+                        coinRect.left < playerRect.right &&
+                        coinRect.right > playerRect.left &&
+                        coinRect.top < playerRect.bottom &&
+                        coinRect.bottom > playerRect.top) {
+                        
+                        coin.style.display = 'none';
+                        score += 50;
+                        scoreDisplay.textContent = score;
+                    }
+                });
+            }, 1000/60);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateAIStatus('Welcome to AI Drawing Creator! Start drawing to begin.');
+        });
+    </script>
+</body>
+</html>
