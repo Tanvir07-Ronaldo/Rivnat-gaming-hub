@@ -194,12 +194,7 @@ I welcome contributions and feedback! If you have ideas for improvements, bug fi
 4. Test thoroughly
 5. Submit a pull request
 
-## 📞 Connect With Me
 
-- **GitHub**: [Tanvir07-Ronaldo](https://github.com/Tanvir07-Ronaldo)
-- **LinkedIn**: [Tanvir Ronaldo](https://linkedin.com/in/tanvir-ronaldo)
-- **Twitter**: [@tanvir_ronaldo](https://twitter.com/tanvir_ronaldo)
-- **Email**: tanvir.ronaldo@example.com
 
 ## 🙏 Acknowledgments
 
